@@ -203,10 +203,10 @@ body.cover-ready {
 
 .plate {
   position: absolute;
-  left: 18.3%;
-  top: 5%;
-  width: 29.4%;
-  height: 18.3%;
+  left: 21.2%;
+  top: 8.2%;
+  width: 25.5%;
+  height: 16.5%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -251,14 +251,20 @@ body.cover-ready {
 
 .plate.kali-plate .en {
   color: #5a2a16;
-  font-size: clamp(1.2rem, 2vw, 2rem);
+  margin-top: 0;
+  max-width: 100%;
+  font-size: clamp(0.65rem, 1.35vw, 1.15rem);
   font-weight: 900;
-  letter-spacing: 0.35em;
+  line-height: 1;
+  letter-spacing: clamp(0.12em, 0.28vw, 0.35em);
+  white-space: nowrap;
 }
 
 .plate.kali-plate .bn-image {
-  transform: scaleY(1.16);
-  transform-origin: bottom center;
+  width: 90%;
+  height: 48%;
+  object-fit: contain;
+  transform: none;
 }
 
 .plate.tara-plate .en {
@@ -411,25 +417,33 @@ body.cover-ready {
   text-transform: uppercase;
 }
 
-.kali-description-box {
+.goddess-text-wrap {
   position: absolute;
   z-index: 150;
   top: 27%;
   left: 12%;
   width: 40%;
   height: 62%;
-  overflow-y: scroll;
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
+  overflow-y: auto;
   padding: clamp(0.7rem, 1.3vw, 1.15rem);
-  border: 1px solid rgba(239, 191, 112, 0.28);
-  border-radius: 0.35rem;
-  background: rgba(3, 28, 68, 0.24);
-  box-shadow: 0 0 0 1px rgba(5, 35, 79, 0.18), 0 0.45rem 1.2rem rgba(0, 0, 0, 0.16);
-  color: rgba(255, 247, 229, 0.95);
-  scrollbar-color: rgba(239, 191, 112, 0.8) rgba(2, 22, 53, 0.55);
-  scrollbar-width: thin;
   pointer-events: auto;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.goddess-text {
+  margin: 0;
+  color: rgba(255, 247, 229, 0.95);
+  font-family: "Tiro Bangla", Georgia, serif;
+  font-size: clamp(0.78rem, 1.45vw, 1.15rem);
+  line-height: 1.75;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.6);
+}
+
+.kali-description-box {
+  display: none;
 }
 
 .kali-description-box h2 {
@@ -456,7 +470,6 @@ body.cover-ready {
   font-size: clamp(0.58rem, 0.9vw, 0.76rem);
   line-height: 1.2;
   cursor: pointer;
-  display: none;
 }
 
 .kali-language-toggle:hover,
@@ -482,22 +495,32 @@ body.cover-ready {
   position: absolute;
   z-index: 155;
   left: 50%;
-  bottom: 1.5%;
-  width: min(62%, 52rem);
+  bottom: 0.4%;
+  display: inline-block;
+  width: fit-content;
+  min-width: min(72%, 58rem);
+  max-width: min(76%, 59rem);
   margin: 0;
+  padding: 0.5rem 2.2rem 0.45rem;
   transform: translateX(-50%);
-  color: rgba(255, 255, 255, 0.94);
+  color: #050505;
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(0.48rem, 0.72vw, 0.72rem);
-  font-weight: 400;
-  line-height: 1.35;
+  font-weight: 700;
+  line-height: 1.18;
   text-align: center;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  background: url("NAME PLATE.png") center / 100% 100% no-repeat;
+  box-sizing: border-box;
+  text-shadow:
+    0 0 3px rgba(255, 255, 255, 0.7),
+    0 1px 3px rgba(255, 255, 255, 0.65),
+    0 2px 8px rgba(0, 0, 0, 0.75);
   pointer-events: none;
 }
 
 .disclaimer-label {
   display: inline-block;
+  margin-right: 0.25em;
   text-decoration: underline;
   text-decoration-line: underline;
   text-decoration-style: double;
@@ -951,13 +974,302 @@ body.cover-ready {
 }
 
 @media (max-width: 700px) {
-  .hint {
+  .stage {
+    padding: 0;
+    gap: 0;
+  }
+
+  .topbar {
     display: none;
   }
 
-  .nav-btn {
-    letter-spacing: 0.06em;
-    padding: 0.55rem 0.8rem;
+  .book-wrap {
+    width: 100vw;
+    height: 100vh;
+    max-width: 100vw;
+    flex: none;
+    margin: 0;
+  }
+
+  .book {
+    width: 100vw;
+    height: 100vh;
+    max-width: 100vw;
+    max-height: 100vh;
+    aspect-ratio: 755 / 1520;
+    margin: 0;
+  }
+
+  .leaf {
+    border-radius: 8px 10px 10px 8px;
+  }
+
+  .plate {
+    left: 18%;
+    top: 8.8%;
+    width: 29%;
+    height: 15.2%;
+  }
+
+  .plate .en {
+    letter-spacing: 0.12em;
+  }
+
+  .goddess-text-wrap {
+    top: 72%;
+    left: 50%;
+    width: 84%;
+    min-height: auto;
+    max-height: 58%;
+    padding: 0.55rem 0.7rem 0.6rem;
+    transform: translate(-50%, -50%);
+    overflow: hidden;
+    scrollbar-width: none;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+  }
+
+  .goddess-text-wrap::-webkit-scrollbar {
+    display: none;
+  }
+
+  .goddess-text {
+    font-size: 0.62rem;
+    line-height: 1.55;
+  }
+
+  .goddess-disclaimer {
+    min-width: min(82%, 24rem);
+    max-width: 86%;
+    bottom: 0.3%;
+    padding: 0.45rem 1.2rem 0.38rem;
+    font-size: 0.42rem;
+    color: #050505;
+    font-weight: 700;
+    line-height: 1.12;
+    text-shadow:
+      0 0 3px rgba(255, 255, 255, 0.7),
+      0 1px 3px rgba(255, 255, 255, 0.65),
+      0 2px 8px rgba(0, 0, 0, 0.75);
+  }
+
+  .hit {
+    width: 18%;
+  }
+
+  .hit img {
+    width: clamp(2rem, 9vw, 3.1rem);
+    height: clamp(2rem, 9vw, 3.1rem);
+  }
+
+  .home-hit {
+    top: 0.4rem;
+    left: 0.55rem;
+    width: clamp(2.4rem, 8vw, 3rem);
+    height: clamp(2.4rem, 8vw, 3rem);
+  }
+
+  .language-hit {
+    top: 0.2rem;
+    left: calc(clamp(2.4rem, 8vw, 3rem) + 0.5rem);
+    width: clamp(2.8rem, 9vw, 3.5rem);
+    height: clamp(2.8rem, 9vw, 3.5rem);
+  }
+
+  .controls {
+    display: none !important;
+  }
+
+  .hint {
+    display: none !important;
+  }
+
+  .mobile-page-back {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, rgba(0, 0, 0, 0.14), transparent 10%), #d3b073;
+    box-shadow: inset 0 0 30px rgba(71, 36, 10, 0.22);
+  }
+
+  .cover-kali-hit {
+    position: absolute;
+    z-index: 3;
+    top: 23%;
+    left: 1%;
+    width: 48%;
+    height: 29%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .cover-kali-hit:focus-visible {
+    outline: 2px solid rgba(255, 226, 151, 0.95);
+    outline-offset: -3px;
+  }
+
+  .cover-tara-hit {
+    position: absolute;
+    z-index: 3;
+    top: 23%;
+    right: 1%;
+    width: 48%;
+    height: 15%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .cover-tara-hit:focus-visible {
+    outline: 2px solid rgba(255, 226, 151, 0.95);
+    outline-offset: -3px;
+  }
+
+  .cover-bhuvaneswari-hit {
+    position: absolute;
+    z-index: 3;
+    top: 38%;
+    right: 1%;
+    width: 48%;
+    height: 16%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .cover-bhuvaneswari-hit:focus-visible {
+    outline: 2px solid rgba(255, 226, 151, 0.95);
+    outline-offset: -3px;
+  }
+
+  .cover-tripura-hit {
+    position: absolute;
+    z-index: 3;
+    top: 38%;
+    left: 1%;
+    width: 48%;
+    height: 16%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .cover-tripura-hit:focus-visible {
+    outline: 2px solid rgba(255, 226, 151, 0.95);
+    outline-offset: -3px;
+  }
+
+  .cover-bhairavi-hit {
+    position: absolute;
+    z-index: 3;
+    top: 54%;
+    left: 1%;
+    width: 48%;
+    height: 16%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .cover-bhairavi-hit:focus-visible {
+    outline: 2px solid rgba(255, 226, 151, 0.95);
+    outline-offset: -3px;
+  }
+
+  .cover-chinnamasta-hit {
+    position: absolute;
+    z-index: 3;
+    top: 54%;
+    right: 1%;
+    width: 48%;
+    height: 16%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .cover-chinnamasta-hit:focus-visible {
+    outline: 2px solid rgba(255, 226, 151, 0.95);
+    outline-offset: -3px;
+  }
+
+  .cover-dhumavati-hit {
+    position: absolute;
+    z-index: 3;
+    top: 70%;
+    left: 1%;
+    width: 48%;
+    height: 16%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .cover-dhumavati-hit:focus-visible {
+    outline: 2px solid rgba(255, 226, 151, 0.95);
+    outline-offset: -3px;
+  }
+
+  .cover-bagalamukhi-hit {
+    position: absolute;
+    z-index: 3;
+    top: 70%;
+    right: 1%;
+    width: 48%;
+    height: 16%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .cover-bagalamukhi-hit:focus-visible {
+    outline: 2px solid rgba(255, 226, 151, 0.95);
+    outline-offset: -3px;
+  }
+
+  .cover-matangi-hit {
+    position: absolute;
+    z-index: 3;
+    bottom: 0;
+    left: 1%;
+    width: 48%;
+    height: 14%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .cover-matangi-hit:focus-visible {
+    outline: 2px solid rgba(255, 226, 151, 0.95);
+    outline-offset: -3px;
+  }
+
+  .cover-kamala-hit {
+    position: absolute;
+    z-index: 3;
+    right: 1%;
+    bottom: 0;
+    width: 48%;
+    height: 14%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .cover-kamala-hit:focus-visible {
+    outline: 2px solid rgba(255, 226, 151, 0.95);
+    outline-offset: -3px;
   }
 }
 

@@ -1,4 +1,4 @@
-const PAGES = [
+const DESKTOP_PAGES = [
   { src: "COVER PAGE 2.png", title: "", bn: "", cover: true },
   { src: "KALI.png", title: "Kali", bn: "কালী" },
   { src: "TARA.png", title: "Tara", bn: "তারা" },
@@ -12,6 +12,23 @@ const PAGES = [
   { src: "KAMALA.png", title: "Kamala", bn: "কমলা" },
 ];
 
+const MOBILE_PAGES = [
+  { src: "AND COVER 2.png", title: "", bn: "", cover: true },
+  { src: "AND COVER 1.png", title: "", bn: "", cover: true },
+  { src: "AND KALI.png", title: "Kali", bn: "কালী" },
+  { src: "AND TARA.png", title: "Tara", bn: "তারা" },
+  { src: "AND TRIPURA SUNDARI.png", title: "Tripura Sundari", bn: "ত্রিপুরা সুন্দরী" },
+  { src: "AND BHUVANESWARI.png", title: "Bhuvaneswari", bn: "ভুবনেশ্বরী" },
+  { src: "AND BHAIRAVI1.png", title: "Bhairavi", bn: "ভৈরবী" },
+  { src: "AND CHINNAMASTA.png", title: "Chinnamasta", bn: "ছিন্নমস্তা" },
+  { src: "AND DHUMAVATI.png", title: "Dhumavati", bn: "ধূমাবতী" },
+  { src: "AND BAGALAMUKHI.png", title: "Bagalamukhi", bn: "বগলামুখী" },
+  { src: "AND MATANGI.png", title: "Matangi", bn: "মাতঙ্গী" },
+  { src: "AND KAMALA.png", title: "Kamala", bn: "কমলা" },
+];
+
+const PAGES = window.matchMedia("(max-width: 700px)").matches ? MOBILE_PAGES : DESKTOP_PAGES;
+
 const book = document.getElementById("book");
 const folio = document.getElementById("folio");
 const hint = document.getElementById("hint");
@@ -21,67 +38,138 @@ const audioToggleBtn = document.getElementById("audioToggleBtn");
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const pageCloseSound = new Audio("book close sound.mp3.mpeg");
 pageCloseSound.preload = "auto";
-const pageFlipSound = new Audio("page flip.wav");
+pageCloseSound.muted = false;
+let pageFlipSound = new Audio("page flip.wav");
 pageFlipSound.preload = "auto";
-const ambientAudio = new Audio("uludhhoni.mp3");
+pageFlipSound.volume = 0.9;
+pageFlipSound.muted = false;
+const ambientAudio = new Audio("uludhoni.mp3");
 ambientAudio.preload = "auto";
 ambientAudio.loop = true;
-ambientAudio.volume = 0;
-ambientAudio.muted = false;
+ambientAudio.volume = 0.35;
+ambientAudio.muted = true;
 
 let ambientFadeFrame = null;
 let ambientMusicStarted = false;
-let ambientDelayTimer = null;
+let flipAudioContext = null;
+let ambientAudioContext = null;
+let ambientSynthTimer = null;
+let ambientOscillators = [];
+let pageFlipAudioUnlocked = false;
+
+function unlockPageFlipAudio() {
+  if (pageFlipAudioUnlocked) return;
+  pageFlipAudioUnlocked = true;
+  pageFlipSound.muted = false;
+  pageFlipSound.volume = 0.9;
+  pageFlipSound.load();
+  pageFlipSound.currentTime = 0;
+  pageFlipSound.play().catch(() => {});
+}
+
+function ensureAmbientContext() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return null;
+  if (!ambientAudioContext) {
+    ambientAudioContext = new AudioContextClass();
+  }
+  if (ambientAudioContext.state === "suspended") {
+    ambientAudioContext.resume().catch(() => {});
+  }
+  return ambientAudioContext;
+}
+
+function stopAmbientSynth() {
+  if (ambientSynthTimer) {
+    clearInterval(ambientSynthTimer);
+    ambientSynthTimer = null;
+  }
+
+  ambientOscillators.forEach((osc) => {
+    try {
+      osc.stop();
+    } catch (error) {
+      // ignore already-stopped oscillators
+    }
+  });
+  ambientOscillators = [];
+}
+
+function startAmbientSynth() {
+  const context = ensureAmbientContext();
+  if (!context) return;
+
+  stopAmbientSynth();
+
+  const notes = [174.61, 220, 261.63, 293.66, 349.23];
+  let noteIndex = 0;
+
+  const playNote = () => {
+    const activeContext = ensureAmbientContext();
+    if (!activeContext) return;
+
+    const now = activeContext.currentTime;
+    const osc = activeContext.createOscillator();
+    const gain = activeContext.createGain();
+    const frequency = notes[noteIndex % notes.length];
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(frequency, now);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.05, now + 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+
+    osc.connect(gain);
+    gain.connect(activeContext.destination);
+    osc.start(now);
+    osc.stop(now + 1.25);
+    ambientOscillators.push(osc);
+
+    noteIndex += 1;
+  };
+
+  playNote();
+  ambientSynthTimer = window.setInterval(playNote, 950);
+}
+
+function playPageFlipSound() {
+  try {
+    const flipAudio = new Audio("page flip.wav");
+    flipAudio.preload = "auto";
+    flipAudio.volume = 0.9;
+    flipAudio.muted = false;
+    flipAudio.currentTime = 0;
+    pageFlipSound = flipAudio;
+    flipAudio.play().catch(() => {});
+  } catch (error) {
+    // Ignore browser issues; use the original page-flip audio file.
+  }
+}
 
 function startAmbientMusic() {
   if (ambientMusicStarted) return;
 
   ambientMusicStarted = true;
+  ambientAudio.pause();
   ambientAudio.currentTime = 0;
-  ambientAudio.volume = 0;
-
-  const playPromise = ambientAudio.play();
-  if (playPromise && typeof playPromise.catch === "function") {
-    playPromise.catch(() => {
-      ambientMusicStarted = false;
-      ambientAudio.pause();
-      ambientAudio.currentTime = 0;
-    });
-  }
-
+  ambientAudio.volume = 0.35;
+  ambientAudio.muted = false;
+  ambientAudio.play().catch(() => {});
+  stopAmbientSynth();
   updateAudioToggleButton();
-
-  const startAt = performance.now();
-  const duration = 2200;
-
-  function animateFade(now) {
-    const progress = Math.min((now - startAt) / duration, 1);
-    ambientAudio.volume = progress * 0.7;
-
-    if (progress < 1) {
-      ambientFadeFrame = requestAnimationFrame(animateFade);
-    } else {
-      ambientFadeFrame = null;
-    }
-  }
-
-  ambientFadeFrame = requestAnimationFrame(animateFade);
 }
 
 function stopAmbientMusic() {
-  if (ambientDelayTimer) {
-    clearTimeout(ambientDelayTimer);
-    ambientDelayTimer = null;
-  }
-
   if (ambientFadeFrame) {
     cancelAnimationFrame(ambientFadeFrame);
     ambientFadeFrame = null;
   }
 
+  stopAmbientSynth();
   ambientAudio.pause();
   ambientAudio.currentTime = 0;
   ambientAudio.volume = 0;
+  ambientAudio.muted = true;
   ambientMusicStarted = false;
   updateAudioToggleButton();
 }
@@ -94,7 +182,7 @@ function hideHomeAudioIcon() {
 
 function updateAudioToggleButton() {
   if (!audioToggleBtn) return;
-  const isHome = index === 0;
+  const isHome = index === 0 && !busy;
   const isPlaying = ambientMusicStarted;
   const icon = audioToggleBtn.querySelector("img");
 
@@ -118,17 +206,6 @@ function updateAudioToggleButton() {
   audioToggleBtn.style.opacity = "";
   audioToggleBtn.style.visibility = "";
   audioToggleBtn.style.pointerEvents = "";
-}
-
-function maybeStartHomeAmbientMusic() {
-  if (index !== 0 || ambientMusicStarted) return;
-
-  clearTimeout(ambientDelayTimer);
-  ambientDelayTimer = window.setTimeout(() => {
-    if (index === 0 && !ambientMusicStarted) {
-      startAmbientMusic();
-    }
-  }, 1000);
 }
 
 const GODDESS_DISCLAIMER = "Disclaimer: The information provided here is for educational and cultural purposes only; interpretations and traditions may vary, and the actual beliefs or accounts may differ.";
@@ -199,6 +276,24 @@ function stackZ(i, turned) {
   return turned ? i + 1 : PAGES.length - i + 10;
 }
 
+function getPageDescription(pageTitle, useBengali) {
+  const map = {
+    Kali: [KALI_ENGLISH_DESCRIPTION, KALI_BENGALI_DESCRIPTION],
+    Tara: [TARA_ENGLISH_DESCRIPTION, TARA_BENGALI_DESCRIPTION],
+    "Tripura Sundari": [TRIPURA_ENGLISH_DESCRIPTION, TRIPURA_BENGALI_DESCRIPTION],
+    Bhuvaneswari: [BHUVANESWARI_ENGLISH_DESCRIPTION, BHUVANESWARI_BENGALI_DESCRIPTION],
+    Bhairavi: [BHAIRAVI_ENGLISH_DESCRIPTION, BHAIRAVI_BENGALI_DESCRIPTION],
+    Chinnamasta: [CHHINNAMASTA_ENGLISH_DESCRIPTION, CHHINNAMASTA_BENGALI_DESCRIPTION],
+    Dhumavati: [DHUMAVATI_ENGLISH_DESCRIPTION, DHUMAVATI_BENGALI_DESCRIPTION],
+    Bagalamukhi: [BAGALAMUKHI_ENGLISH_DESCRIPTION, BAGALAMUKHI_BENGALI_DESCRIPTION],
+    Matangi: [MATANGI_ENGLISH_DESCRIPTION, MATANGI_BENGALI_DESCRIPTION],
+    Kamala: [KAMALA_ENGLISH_DESCRIPTION, KAMALA_BENGALI_DESCRIPTION]
+  };
+
+  const value = map[pageTitle] || [KALI_ENGLISH_DESCRIPTION, KALI_BENGALI_DESCRIPTION];
+  return useBengali ? value[1] : value[0];
+}
+
 function renderLeaves() {
   PAGES.forEach((page, i) => {
     const leaf = document.createElement("article");
@@ -209,152 +304,122 @@ function renderLeaves() {
     const front = document.createElement("div");
     front.className = "face front";
     front.innerHTML = `<img src="${page.src}" alt="${page.bn || page.title || "Book page"}" />`;
+    if (page.src === "AND COVER 1.png") {
+      const coverImage = front.querySelector("img");
+      coverImage.classList.add("cover-language-image");
+      coverImage.dataset.englishSrc = "AND COVER 1.png";
+      coverImage.dataset.bengaliSrc = "AND COVER 1b.png";
+      const kaliHit = document.createElement("button");
+      kaliHit.type = "button";
+      kaliHit.className = "cover-kali-hit";
+      kaliHit.setAttribute("aria-label", "Open Kali page");
+      kaliHit.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (index === 1) goNext();
+      });
+      const taraHit = document.createElement("button");
+      taraHit.type = "button";
+      taraHit.className = "cover-tara-hit";
+      taraHit.setAttribute("aria-label", "Open Tara page");
+      taraHit.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (index === 1) {
+          goToPage(PAGES.findIndex((item) => item.title === "Tara"));
+        }
+      });
+      const bhuvaneswariHit = document.createElement("button");
+      bhuvaneswariHit.type = "button";
+      bhuvaneswariHit.className = "cover-bhuvaneswari-hit";
+      bhuvaneswariHit.setAttribute("aria-label", "Open Bhuvaneswari page");
+      bhuvaneswariHit.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (index === 1) {
+          goToPage(PAGES.findIndex((item) => item.title === "Bhuvaneswari"));
+        }
+      });
+      const tripuraHit = document.createElement("button");
+      tripuraHit.type = "button";
+      tripuraHit.className = "cover-tripura-hit";
+      tripuraHit.setAttribute("aria-label", "Open Tripura Sundari page");
+      tripuraHit.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (index === 1) {
+          goToPage(PAGES.findIndex((item) => item.title === "Tripura Sundari"));
+        }
+      });
+      const bhairaviHit = document.createElement("button");
+      bhairaviHit.type = "button";
+      bhairaviHit.className = "cover-bhairavi-hit";
+      bhairaviHit.setAttribute("aria-label", "Open Bhairavi page");
+      bhairaviHit.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (index === 1) {
+          goToPage(PAGES.findIndex((item) => item.title === "Bhairavi"));
+        }
+      });
+      const chinnamastaHit = document.createElement("button");
+      chinnamastaHit.type = "button";
+      chinnamastaHit.className = "cover-chinnamasta-hit";
+      chinnamastaHit.setAttribute("aria-label", "Open Chinnamasta page");
+      chinnamastaHit.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (index === 1) {
+          goToPage(PAGES.findIndex((item) => item.title === "Chinnamasta"));
+        }
+      });
+      const dhumavatiHit = document.createElement("button");
+      dhumavatiHit.type = "button";
+      dhumavatiHit.className = "cover-dhumavati-hit";
+      dhumavatiHit.setAttribute("aria-label", "Open Dhumavati page");
+      dhumavatiHit.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (index === 1) {
+          goToPage(PAGES.findIndex((item) => item.title === "Dhumavati"));
+        }
+      });
+      const bagalamukhiHit = document.createElement("button");
+      bagalamukhiHit.type = "button";
+      bagalamukhiHit.className = "cover-bagalamukhi-hit";
+      bagalamukhiHit.setAttribute("aria-label", "Open Bagalamukhi page");
+      bagalamukhiHit.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (index === 1) {
+          goToPage(PAGES.findIndex((item) => item.title === "Bagalamukhi"));
+        }
+      });
+      const matangiHit = document.createElement("button");
+      matangiHit.type = "button";
+      matangiHit.className = "cover-matangi-hit";
+      matangiHit.setAttribute("aria-label", "Open Matangi page");
+      matangiHit.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (index === 1) {
+          goToPage(PAGES.findIndex((item) => item.title === "Matangi"));
+        }
+      });
+      const kamalaHit = document.createElement("button");
+      kamalaHit.type = "button";
+      kamalaHit.className = "cover-kamala-hit";
+      kamalaHit.setAttribute("aria-label", "Open Kamala page");
+      kamalaHit.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (index === 1) {
+          goToPage(PAGES.findIndex((item) => item.title === "Kamala"));
+        }
+      });
+      front.append(kaliHit, taraHit, bhuvaneswariHit, tripuraHit, bhairaviHit, chinnamastaHit, dhumavatiHit, bagalamukhiHit, matangiHit, kamalaHit);
+    }
     if (!page.cover && page.bn) {
-      front.insertAdjacentHTML(
-        "beforeend",
-        `<div class="plate${page.title === "Tripura Sundari" ? " tripura-plate" : page.title === "Kali" ? " kali-plate" : page.title === "Tara" ? " tara-plate" : page.title === "Bhuvaneswari" ? " bhuvaneswari-plate" : page.title === "Bhairavi" ? " bhairavi-plate" : page.title === "Chinnamasta" ? " chinnamasta-plate" : page.title === "Dhumavati" ? " dhumavati-plate" : page.title === "Bagalamukhi" ? " bagalamukhi-plate" : page.title === "Matangi" ? " matangi-plate" : page.title === "Kamala" ? " kamala-plate" : ""}">${page.title === "Tripura Sundari" ? `<img class="bn-image" src="bngtp snd.png" alt="${page.bn}" />` : page.title === "Kali" ? `<img class="bn-image" src="bng kali.png" alt="${page.bn}" />` : page.title === "Tara" ? `<img class="bn-image" src="bengtara.png" alt="${page.bn}" />` : page.title === "Bhuvaneswari" ? `<img class="bn-image" src="bngvub.png" alt="${page.bn}" />` : page.title === "Bhairavi" ? `<img class="bn-image" src="bngvbr.png" alt="${page.bn}" />` : page.title === "Chinnamasta" ? `<img class="bn-image" src="bngcm.png" alt="${page.bn}" />` : page.title === "Dhumavati" ? `<img class="bn-image" src="bngdb.png" alt="${page.bn}" />` : page.title === "Bagalamukhi" ? `<img class="bn-image" src="bngbogolamukhi.png" alt="${page.bn}" />` : page.title === "Matangi" ? `<img class="bn-image" src="bngmt.png" alt="${page.bn}" />` : page.title === "Kamala" ? `<img class="bn-image" src="bngkom.png" alt="${page.bn}" />` : `<span class="bn">${page.bn}</span>`}<span class="en">${page.title}</span></div>`
-      );
-      if (page.title === "Kali") {
-        front.insertAdjacentHTML(
-          "beforeend",
-          `<aside class="kali-description-box" aria-label="Kali description"><button type="button" class="kali-language-toggle" aria-pressed="false">en/বাং</button><h2>About Kali</h2><p class="kali-description-text"></p></aside>`
-        );
-        const descriptionBox = front.querySelector(".kali-description-box");
-        const languageToggle = descriptionBox.querySelector(".kali-language-toggle");
-        const descriptionText = descriptionBox.querySelector(".kali-description-text");
-        descriptionText.textContent = KALI_ENGLISH_DESCRIPTION;
-        languageToggle.addEventListener("click", () => {
-          const isBengali = languageToggle.getAttribute("aria-pressed") === "true";
-          languageToggle.setAttribute("aria-pressed", String(!isBengali));
-          descriptionText.textContent = isBengali ? KALI_ENGLISH_DESCRIPTION : KALI_BENGALI_DESCRIPTION;
-        });
-      } else if (page.title === "Tara") {
-        front.insertAdjacentHTML(
-          "beforeend",
-          `<aside class="kali-description-box" aria-label="Tara description"><button type="button" class="kali-language-toggle" aria-pressed="false">en/বাং</button><h2>About Tara</h2><p class="kali-description-text"></p></aside>`
-        );
-        const descriptionBox = front.querySelector(".kali-description-box");
-        const languageToggle = descriptionBox.querySelector(".kali-language-toggle");
-        const descriptionText = descriptionBox.querySelector(".kali-description-text");
-        descriptionText.textContent = TARA_ENGLISH_DESCRIPTION;
-        languageToggle.addEventListener("click", () => {
-          const isBengali = languageToggle.getAttribute("aria-pressed") === "true";
-          languageToggle.setAttribute("aria-pressed", String(!isBengali));
-          descriptionText.textContent = isBengali ? TARA_ENGLISH_DESCRIPTION : TARA_BENGALI_DESCRIPTION;
-        });
-      } else if (page.title === "Tripura Sundari") {
-        front.insertAdjacentHTML(
-          "beforeend",
-          `<aside class="kali-description-box" aria-label="Tripura Sundari description"><button type="button" class="kali-language-toggle" aria-pressed="false">en/বাং</button><h2>About Tripura Sundari</h2><p class="kali-description-text"></p></aside>`
-        );
-        const descriptionBox = front.querySelector(".kali-description-box");
-        const languageToggle = descriptionBox.querySelector(".kali-language-toggle");
-        const descriptionText = descriptionBox.querySelector(".kali-description-text");
-        descriptionText.textContent = TRIPURA_ENGLISH_DESCRIPTION;
-        languageToggle.addEventListener("click", () => {
-          const isBengali = languageToggle.getAttribute("aria-pressed") === "true";
-          languageToggle.setAttribute("aria-pressed", String(!isBengali));
-          descriptionText.textContent = isBengali ? TRIPURA_ENGLISH_DESCRIPTION : TRIPURA_BENGALI_DESCRIPTION;
-        });
-      } else if (page.title === "Bhuvaneswari") {
-        front.insertAdjacentHTML(
-          "beforeend",
-          `<aside class="kali-description-box" aria-label="Bhuvaneswari description"><button type="button" class="kali-language-toggle" aria-pressed="false">en/বাং</button><h2>About Bhuvaneswari</h2><p class="kali-description-text"></p></aside>`
-        );
-        const descriptionBox = front.querySelector(".kali-description-box");
-        const languageToggle = descriptionBox.querySelector(".kali-language-toggle");
-        const descriptionText = descriptionBox.querySelector(".kali-description-text");
-        descriptionText.textContent = BHUVANESWARI_ENGLISH_DESCRIPTION;
-        languageToggle.addEventListener("click", () => {
-          const isBengali = languageToggle.getAttribute("aria-pressed") === "true";
-          languageToggle.setAttribute("aria-pressed", String(!isBengali));
-          descriptionText.textContent = isBengali ? BHUVANESWARI_ENGLISH_DESCRIPTION : BHUVANESWARI_BENGALI_DESCRIPTION;
-        });
-      } else if (page.title === "Bhairavi") {
-        front.insertAdjacentHTML(
-          "beforeend",
-          `<aside class="kali-description-box" aria-label="Bhairavi description"><button type="button" class="kali-language-toggle" aria-pressed="false">en/বাং</button><h2>About Bhairavi</h2><p class="kali-description-text"></p></aside>`
-        );
-        const descriptionBox = front.querySelector(".kali-description-box");
-        const languageToggle = descriptionBox.querySelector(".kali-language-toggle");
-        const descriptionText = descriptionBox.querySelector(".kali-description-text");
-        descriptionText.textContent = BHAIRAVI_ENGLISH_DESCRIPTION;
-        languageToggle.addEventListener("click", () => {
-          const isBengali = languageToggle.getAttribute("aria-pressed") === "true";
-          languageToggle.setAttribute("aria-pressed", String(!isBengali));
-          descriptionText.textContent = isBengali ? BHAIRAVI_ENGLISH_DESCRIPTION : BHAIRAVI_BENGALI_DESCRIPTION;
-        });
-      } else if (page.title === "Chinnamasta") {
-        front.insertAdjacentHTML(
-          "beforeend",
-          `<aside class="kali-description-box" aria-label="Chhinnamasta description"><button type="button" class="kali-language-toggle" aria-pressed="false">en/বাং</button><h2>About Chhinnamasta</h2><p class="kali-description-text"></p></aside>`
-        );
-        const descriptionBox = front.querySelector(".kali-description-box");
-        const languageToggle = descriptionBox.querySelector(".kali-language-toggle");
-        const descriptionText = descriptionBox.querySelector(".kali-description-text");
-        descriptionText.textContent = CHHINNAMASTA_ENGLISH_DESCRIPTION;
-        languageToggle.addEventListener("click", () => {
-          const isBengali = languageToggle.getAttribute("aria-pressed") === "true";
-          languageToggle.setAttribute("aria-pressed", String(!isBengali));
-          descriptionText.textContent = isBengali ? CHHINNAMASTA_ENGLISH_DESCRIPTION : CHHINNAMASTA_BENGALI_DESCRIPTION;
-        });
-      } else if (page.title === "Dhumavati") {
-        front.insertAdjacentHTML(
-          "beforeend",
-          `<aside class="kali-description-box" aria-label="Dhumavati description"><button type="button" class="kali-language-toggle" aria-pressed="false">en/বাং</button><h2>About Dhumavati</h2><p class="kali-description-text"></p></aside>`
-        );
-        const descriptionBox = front.querySelector(".kali-description-box");
-        const languageToggle = descriptionBox.querySelector(".kali-language-toggle");
-        const descriptionText = descriptionBox.querySelector(".kali-description-text");
-        descriptionText.textContent = DHUMAVATI_ENGLISH_DESCRIPTION;
-        languageToggle.addEventListener("click", () => {
-          const isBengali = languageToggle.getAttribute("aria-pressed") === "true";
-          languageToggle.setAttribute("aria-pressed", String(!isBengali));
-          descriptionText.textContent = isBengali ? DHUMAVATI_ENGLISH_DESCRIPTION : DHUMAVATI_BENGALI_DESCRIPTION;
-        });
-      } else if (page.title === "Bagalamukhi") {
-        front.insertAdjacentHTML(
-          "beforeend",
-          `<aside class="kali-description-box" aria-label="Bagalamukhi description"><button type="button" class="kali-language-toggle" aria-pressed="false">en/বাং</button><h2>About Bagalamukhi</h2><p class="kali-description-text"></p></aside>`
-        );
-        const descriptionBox = front.querySelector(".kali-description-box");
-        const languageToggle = descriptionBox.querySelector(".kali-language-toggle");
-        const descriptionText = descriptionBox.querySelector(".kali-description-text");
-        descriptionText.textContent = BAGALAMUKHI_ENGLISH_DESCRIPTION;
-        languageToggle.addEventListener("click", () => {
-          const isBengali = languageToggle.getAttribute("aria-pressed") === "true";
-          languageToggle.setAttribute("aria-pressed", String(!isBengali));
-          descriptionText.textContent = isBengali ? BAGALAMUKHI_ENGLISH_DESCRIPTION : BAGALAMUKHI_BENGALI_DESCRIPTION;
-        });
-      } else if (page.title === "Matangi") {
-        front.insertAdjacentHTML(
-          "beforeend",
-          `<aside class="kali-description-box" aria-label="Matangi description"><button type="button" class="kali-language-toggle" aria-pressed="false">en/বাং</button><h2>About Matangi</h2><p class="kali-description-text"></p></aside>`
-        );
-        const descriptionBox = front.querySelector(".kali-description-box");
-        const languageToggle = descriptionBox.querySelector(".kali-language-toggle");
-        const descriptionText = descriptionBox.querySelector(".kali-description-text");
-        descriptionText.textContent = MATANGI_ENGLISH_DESCRIPTION;
-        languageToggle.addEventListener("click", () => {
-          const isBengali = languageToggle.getAttribute("aria-pressed") === "true";
-          languageToggle.setAttribute("aria-pressed", String(!isBengali));
-          descriptionText.textContent = isBengali ? MATANGI_ENGLISH_DESCRIPTION : MATANGI_BENGALI_DESCRIPTION;
-        });
-      } else if (page.title === "Kamala") {
-        front.insertAdjacentHTML(
-          "beforeend",
-          `<aside class="kali-description-box" aria-label="Kamala description"><button type="button" class="kali-language-toggle" aria-pressed="false">en/বাং</button><h2>About Kamala</h2><p class="kali-description-text"></p></aside>`
-        );
-        const descriptionBox = front.querySelector(".kali-description-box");
-        const languageToggle = descriptionBox.querySelector(".kali-language-toggle");
-        const descriptionText = descriptionBox.querySelector(".kali-description-text");
-        descriptionText.textContent = KAMALA_ENGLISH_DESCRIPTION;
-        languageToggle.addEventListener("click", () => {
-          const isBengali = languageToggle.getAttribute("aria-pressed") === "true";
-          languageToggle.setAttribute("aria-pressed", String(!isBengali));
-          descriptionText.textContent = isBengali ? KAMALA_ENGLISH_DESCRIPTION : KAMALA_BENGALI_DESCRIPTION;
-        });
-      }
+      const textWrap = document.createElement("div");
+      textWrap.className = "goddess-text-wrap";
+      const text = document.createElement("p");
+      text.className = "goddess-text";
+      text.dataset.english = getPageDescription(page.title, false);
+      text.dataset.bengali = getPageDescription(page.title, true);
+      text.textContent = text.dataset.english;
+
+      textWrap.append(text);
+      front.append(textWrap);
 
       const disclaimer = document.createElement("p");
       disclaimer.className = "goddess-disclaimer";
@@ -366,7 +431,10 @@ function renderLeaves() {
 
     const back = document.createElement("div");
     back.className = "face back";
-    back.innerHTML = `<img src="COVER PAGE 1.png" alt="" />`;
+    const isMobileView = window.matchMedia("(max-width: 700px)").matches;
+    back.innerHTML = isMobileView
+      ? '<div class="mobile-page-back" aria-hidden="true"></div>'
+      : '<img src="COVER PAGE 1.png" alt="" />';
 
     leaf.append(front, back);
     book.append(leaf);
@@ -398,10 +466,6 @@ function updateChrome() {
   nextBtn.disabled = index === PAGES.length - 1 || busy;
 
   updateAudioToggleButton();
-
-  if (index === 0) {
-    maybeStartHomeAmbientMusic();
-  }
 }
 
 function finishFlip(leaf, turned) {
@@ -436,8 +500,7 @@ function goNext() {
   }
   const leaf = leaves[index];
   busy = true;
-  pageFlipSound.currentTime = 0;
-  void pageFlipSound.play().catch(() => {});
+  playPageFlipSound();
   updateChrome();
   book.classList.remove("at-start");
   book.classList.toggle("at-kali", index + 1 === 1);
@@ -458,14 +521,47 @@ function goNext() {
   leaf.addEventListener("animationend", done);
 }
 
+function goToPage(targetIndex) {
+  if (busy || targetIndex <= index || targetIndex >= PAGES.length) return;
+
+  const leaf = leaves[index];
+  for (let pageIndex = index + 1; pageIndex < targetIndex; pageIndex += 1) {
+    const skippedLeaf = leaves[pageIndex];
+    skippedLeaf.classList.add("turned");
+    skippedLeaf.style.zIndex = String(stackZ(pageIndex, true));
+  }
+
+  busy = true;
+  playPageFlipSound();
+  updateChrome();
+  book.classList.remove("at-start");
+  book.classList.remove("at-kali");
+  book.classList.toggle("at-end", targetIndex === PAGES.length - 1);
+
+  const finishJump = () => {
+    index = targetIndex;
+    finishFlip(leaf, true);
+  };
+
+  if (reduceMotion) {
+    finishJump();
+    return;
+  }
+
+  leaf.classList.add("flipping-forward");
+  leaf.addEventListener("animationend", function onAnimationEnd() {
+    leaf.removeEventListener("animationend", onAnimationEnd);
+    finishJump();
+  });
+}
+
 function goPrev() {
   if (busy || index <= 0) return;
   const leaf = leaves[index - 1];
   const returningFromEnd = index === PAGES.length - 1;
   busy = true;
   if (!returningHome) {
-    pageFlipSound.currentTime = 0;
-    void pageFlipSound.play().catch(() => {});
+    playPageFlipSound();
   }
   updateChrome();
   if (!returningFromEnd) book.classList.remove("at-end");
@@ -564,15 +660,31 @@ function updateLanguageButtonIcon() {
   if (image) image.src = isBengali ? "translate 1.png" : "translate.png";
 }
 
+function syncGoddessTextLanguage(useBengali) {
+  document.querySelectorAll(".goddess-text").forEach((textNode) => {
+    const nextText = useBengali ? textNode.dataset.bengali : textNode.dataset.english;
+    if (nextText) {
+      textNode.textContent = nextText;
+    }
+  });
+}
+
+function syncCoverImageLanguage(useBengali) {
+  document.querySelectorAll(".cover-language-image").forEach((image) => {
+    const nextSource = useBengali ? image.dataset.bengaliSrc : image.dataset.englishSrc;
+    if (nextSource && image.getAttribute("src") !== nextSource) {
+      image.src = nextSource;
+    }
+  });
+}
+
 languageHit.addEventListener("click", () => {
   const switchToBengali = languageHit.getAttribute("aria-pressed") !== "true";
   languageHit.setAttribute("aria-pressed", String(switchToBengali));
   updateLanguageButtonIcon();
   setDisclaimerLanguage(switchToBengali);
-  document.querySelectorAll(".kali-language-toggle").forEach((toggle) => {
-    const isBengali = toggle.getAttribute("aria-pressed") === "true";
-    if (isBengali !== switchToBengali) toggle.click();
-  });
+  syncGoddessTextLanguage(switchToBengali);
+  syncCoverImageLanguage(switchToBengali);
 });
 const languageImage = languageHit.querySelector("img");
 languageImage.addEventListener("error", () => {
@@ -584,10 +696,8 @@ function syncLanguageControls() {
   const switchToBengali = languageHit.getAttribute("aria-pressed") === "true";
   updateLanguageButtonIcon();
   setDisclaimerLanguage(switchToBengali);
-  document.querySelectorAll(".kali-language-toggle").forEach((toggle) => {
-    const isBengali = toggle.getAttribute("aria-pressed") === "true";
-    if (isBengali !== switchToBengali) toggle.click();
-  });
+  syncGoddessTextLanguage(switchToBengali);
+  syncCoverImageLanguage(switchToBengali);
 }
 
 function setDisclaimerLanguage(useBengali) {
@@ -603,6 +713,9 @@ book.append(prevHit, nextHit, homeHit, languageHit);
 
 prevBtn.addEventListener("click", goPrev);
 nextBtn.addEventListener("click", goNext);
+window.addEventListener("pointerdown", unlockPageFlipAudio, { once: true });
+window.addEventListener("touchstart", unlockPageFlipAudio, { once: true });
+window.addEventListener("click", unlockPageFlipAudio, { once: true });
 
 window.addEventListener("keydown", (event) => {
   const isActionKey = event.key === "Enter" || event.key === " ";
@@ -623,51 +736,6 @@ window.addEventListener("keydown", (event) => {
   if (event.key === "ArrowLeft" || event.key === "PageUp") {
     event.preventDefault();
     goPrev();
-  }
-});
-
-function fadeOutHomeAudioIcon() {
-  if (!audioToggleBtn || index !== 0) return;
-  audioToggleBtn.classList.add("visible");
-  audioToggleBtn.style.opacity = "1";
-  audioToggleBtn.style.visibility = "visible";
-  audioToggleBtn.style.pointerEvents = "auto";
-  window.setTimeout(() => {
-    if (!audioToggleBtn) return;
-    audioToggleBtn.style.opacity = "0";
-    audioToggleBtn.style.visibility = "hidden";
-    audioToggleBtn.style.pointerEvents = "none";
-    window.setTimeout(() => {
-      if (!audioToggleBtn) return;
-      audioToggleBtn.hidden = true;
-      audioToggleBtn.classList.remove("visible");
-    }, 500);
-  }, 0);
-}
-
-document.body.addEventListener("pointerdown", (event) => {
-  if (index !== 0) return;
-  if (event.target.closest("button") || event.target.closest("#audioToggleBtn")) {
-    return;
-  }
-  fadeOutHomeAudioIcon();
-  stopAmbientMusic();
-}, { passive: true });
-
-document.body.addEventListener("click", (event) => {
-  if (event.target.closest("button") || event.target.closest("#audioToggleBtn")) {
-    if (event.target.closest("#audioToggleBtn")) {
-      return;
-    }
-    fadeOutHomeAudioIcon();
-    stopAmbientMusic();
-    return;
-  }
-
-  fadeOutHomeAudioIcon();
-  stopAmbientMusic();
-  if (index === 0) {
-    goNext();
   }
 });
 
