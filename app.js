@@ -270,6 +270,7 @@ const KAMALA_BENGALI_DESCRIPTION = `কমলা হলেন দশ মহা�
 let index = 0;
 let busy = false;
 let returningHome = false;
+let returnTarget = 0;
 const leaves = [];
 
 function stackZ(i, turned) {
@@ -427,6 +428,20 @@ function renderLeaves() {
       disclaimer.dataset.english = GODDESS_DISCLAIMER;
       disclaimer.dataset.bengali = GODDESS_BENGALI_DISCLAIMER;
       front.append(disclaimer);
+
+      const selectionButton = document.createElement("button");
+      selectionButton.type = "button";
+      selectionButton.className = "selection-skip";
+      selectionButton.setAttribute("aria-label", "Back to Selection Page");
+      selectionButton.title = "Back to Selection Page";
+      selectionButton.dataset.pageIndex = String(i);
+      selectionButton.hidden = true;
+      selectionButton.innerHTML = '<img src="skip.png" alt="" />';
+      selectionButton.addEventListener("click", (event) => {
+        event.stopPropagation();
+        goToSelection();
+      });
+      book.append(selectionButton);
     }
 
     const back = document.createElement("div");
@@ -465,6 +480,10 @@ function updateChrome() {
   prevBtn.disabled = index === 0 || busy;
   nextBtn.disabled = index === PAGES.length - 1 || busy;
 
+  book.querySelectorAll(".selection-skip").forEach((button) => {
+    button.hidden = Number(button.dataset.pageIndex) !== index;
+  });
+
   updateAudioToggleButton();
 }
 
@@ -477,10 +496,11 @@ function finishFlip(leaf, turned) {
   busy = false;
   updateChrome();
   syncLanguageControls();
-  if (returningHome && !turned && index > 0) {
+  if (returningHome && !turned && index > returnTarget) {
     window.setTimeout(goPrev, 0);
-  } else if (returningHome && index === 0) {
+  } else if (returningHome && index === returnTarget) {
     returningHome = false;
+    returnTarget = 0;
     book.classList.remove("fast-home");
     book.classList.remove("near-cover-home");
     pageCloseSound.pause();
@@ -591,6 +611,21 @@ function goPrev() {
 function goHome() {
   if (busy || index === 0) return;
   returningHome = true;
+  returnTarget = 0;
+  pageCloseSound.currentTime = 0;
+  pageCloseSound.loop = true;
+  void pageCloseSound.play().catch(() => {});
+  book.classList.add("fast-home");
+  goPrev();
+}
+
+function goToSelection() {
+  const selectionIndex = PAGES.findIndex((page) => page.src === "AND COVER 1.png");
+  const targetIndex = selectionIndex === -1 ? 0 : selectionIndex;
+  if (busy || index <= targetIndex) return;
+
+  returningHome = true;
+  returnTarget = targetIndex;
   pageCloseSound.currentTime = 0;
   pageCloseSound.loop = true;
   void pageCloseSound.play().catch(() => {});
