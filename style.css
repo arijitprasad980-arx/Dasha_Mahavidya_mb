@@ -19,6 +19,7 @@ body {
     var(--bg);
   color: var(--ink);
   font-family: "Cinzel", "Tiro Bangla", serif;
+  font-synthesis: none;
 }
 
 body {
@@ -1005,6 +1006,12 @@ body.cover-ready {
 }
 
 @media (max-width: 700px) {
+  html,
+  body,
+  .stage {
+    min-height: 100svh;
+  }
+
   .stage {
     padding: 0;
     gap: 0;
@@ -1017,6 +1024,7 @@ body.cover-ready {
   .book-wrap {
     width: 100vw;
     height: 100vh;
+    height: 100svh;
     max-width: 100vw;
     flex: none;
     margin: 0;
@@ -1025,10 +1033,36 @@ body.cover-ready {
   .book {
     width: 100vw;
     height: 100vh;
+    height: 100svh;
     max-width: 100vw;
     max-height: 100vh;
+    max-height: 100svh;
     aspect-ratio: 755 / 1520;
     margin: 0;
+    isolation: isolate;
+    /* Avoid Chrome/Android compositing artifacts while pages are turning. */
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
+
+  .leaf {
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
+  }
+
+  .leaf.turned {
+    -webkit-transform: rotateY(-180deg) translateZ(0);
+    transform: rotateY(-180deg) translateZ(0);
+  }
+
+  .face.front {
+    -webkit-transform: translateZ(0.1px);
+    transform: translateZ(0.1px);
+  }
+
+  .face.back {
+    -webkit-transform: rotateY(180deg) translateZ(0.1px);
+    transform: rotateY(180deg) translateZ(0.1px);
   }
 
   .leaf {
